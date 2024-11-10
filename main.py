@@ -1,8 +1,8 @@
 """
 Author: Rokib
-Purpose: List all the pets and allow the customer to
-          see information about a chosen pet, continue, edit, or quit.
+Purpose: Updating Pet Details
 """
+
 import pymysql.cursors
 from creds import *
 from pets import *
@@ -17,13 +17,42 @@ def listChoices():
         print(f"[{petId}] {petsDict[petId].getPetName()}")
     print("Enter Q to Quit")
 
+def updateDatabase(petId, newName, newAge):
+    """Update the pet's name and age in the database."""
+    try:
+        connection = pymysql.connect(
+            host=host, user=username, password=password, db=database,
+            charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor
+        )
+    except Exception as e:
+        print("An error has occurred while connecting to the database. Exiting.")
+        print(e)
+        exit()
+
+    try:
+        with connection.cursor() as cursor:
+            # Update the pet's name and age in the database
+            sql = """
+            UPDATE pets
+            SET name = %s, age = %s
+            WHERE id = %s
+            """
+            cursor.execute(sql, (newName, newAge, petId))
+            connection.commit()
+            print(f"The database has been updated with new name: {newName} and age: {newAge}.")
+    except Exception as e:
+        print("An error has occurred while updating the database.")
+        print(e)
+    finally:
+        connection.close()
+
 try:
     connection = pymysql.connect(
         host=host, user=username, password=password, db=database,
         charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor
     )
 except Exception as e:
-    print("An error has occurred.  Exiting.")
+    print("An error has occurred while connecting to the database. Exiting.")
     print(e)
     exit()
 
@@ -45,7 +74,7 @@ try:
             )
             petsDict[row['id']] = tempPet
 except Exception as e:
-    print("An error has occurred. Exiting.")
+    print("An error has occurred while fetching data from the database. Exiting.")
     print(e)
 finally:
     connection.close()
@@ -61,6 +90,7 @@ def editPet(petId):
     if new_name:
         pet.petName = new_name
         print(f"Pet's name has been updated to {new_name}.")
+        updateDatabase(petId, new_name, pet.getPetAge())
 
     try:
         new_age = input("New age: [ENTER == no change] ")
@@ -71,6 +101,7 @@ def editPet(petId):
             new_age = int(new_age)
             pet.petAge = new_age
             print(f"Pet's age has been updated to {new_age}.")
+            updateDatabase(petId, pet.getPetName(), new_age)
     except ValueError:
         print("Invalid age. Age not updated.")
 
@@ -108,7 +139,7 @@ def main():
             else:
                 print(f"There is no pet with ID {pet}.")
         except ValueError:
-            print(f"It appears that '{pet}' is not a Pet ID or 'Q'")
+            print(f"It appears that '{pet}' is not a Pet ID or 'Q'.")
         except Exception as e:
             print(f"{pet} is an invalid choice")
             print(f"Error message: {e}")
